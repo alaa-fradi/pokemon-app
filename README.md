@@ -1,5 +1,5 @@
 # Pokémon Search App
-![Pokemon Ball](src/assets/pokemonBall.jpg)
+![Pokemon Ball](src/assets/International_Pokémon_logo.svg.png)
 A web application built with React, Apollo Client, and Tailwind CSS for searching and filtering Pokémon by their stats.
 
 ## Features
