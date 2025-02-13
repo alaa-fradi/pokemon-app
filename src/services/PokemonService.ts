@@ -1,15 +1,7 @@
 import { gql } from "@apollo/client";
-import client from "../ApolloClient"; // Import the shared Apollo Client
-/*
-export const GET_POKEMONS = gql`
-  query getPokemons($limit: Int!, $offset: Int!) {
-    pokemon_v2_pokemon(limit: $limit, offset: $offset) {
-      id
-      name
-    }
-  }
-`;
-*/
+import client from "../ApolloClient";
+
+// Query to fetch Pokemons with filtering and sorting capabilities
 const GET_POKEMONS = gql`
 query GetPokemons(
 $orderBy: order_by!, 
@@ -31,7 +23,7 @@ $searchQuery: String,
         }
       }
     }
-  order_by: { id: $orderBy }, 
+  order_by: { name: $orderBy }, 
   limit: $limit, 
   offset: $offset
   ) {
@@ -81,41 +73,33 @@ $searchQuery: String,
   }
 }
 `;
-
-const GET_POKEMONS_Types = gql`
-query GetPokemons {
-   pokemon_v2_type {
-    id
-    name
-  }
-}
-`;
-
+// Function to fetch Pokémon data from the GraphQL API
 export const fetchPokemons = async (
-  orderBy: "asc" | "desc",
-  limit: number,
-  offset: number,
-  searchQuery: string = "",
-  selectedStat: string = "hp",
-  minStat: string | number = "",   // Allow string or number
-  maxStat: string | number = ""    // Allow string or number
-
+  orderBy: "asc" | "desc",  // Sort order (ascending or descending)
+  limit: number,  // Number of Pokémon to fetch per request
+  offset: number, // Pagination offset
+  searchQuery: string = "",  // Search query to filter Pokémon by name (optional)
+  selectedStat: string = "hp",  // Stat used for filtering (default is 'hp')
+  minStat: string | number = "",  // Minimum value for the stat filter (optional)
+  maxStat: string | number = ""   // Maximum value for the stat filter (optional)
 ) => {
   try {
+    // Format the search query to allow for partial matches with '%' wildcard
     const formattedSearchQuery = searchQuery ? `%${searchQuery}%` : "%";
 
-    // Only include the stat filters if they have values
+    // Define the variables to pass to the GraphQL query
     const variables = {
       orderBy,
       limit,
       offset,
       searchQuery: formattedSearchQuery,
-      selectedStat: selectedStat || null,
+      selectedStat: selectedStat || null, // Stat used for filtering (default is null if not provided)
       minStat: minStat !== "" ? Number(minStat) : 0,   // Default to 0 if empty
       maxStat: maxStat !== "" ? Number(maxStat) : 9999 // Default to 9999 if empty
 
     };
 
+    // Execute the query with the defined variables and return the Pokémon data
     const { data } = await client.query({
       query: GET_POKEMONS,
       variables,
@@ -124,18 +108,6 @@ export const fetchPokemons = async (
     return data.pokemon_v2_pokemon;
   } catch (error) {
     console.error("Error fetching Pokémons:", error);
-    return [];
-  }
-};
-
-export const fetchPokemonsTypes = async () => {
-  try {
-    const { data } = await client.query({
-      query: GET_POKEMONS_Types,
-    });
-    return data;
-  } catch (error) {
-    console.error("Error fetching Pokemon types:", error);
     return [];
   }
 };

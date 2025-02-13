@@ -1,35 +1,37 @@
 import { useEffect, useState } from "react";
-import { fetchPokemons, fetchPokemonsTypes } from "../services/PokemonService";
+import { fetchPokemons } from "../services/PokemonService";
 import PokemonCard from "./PokemonCard";
 import pokemonBall from "../assets/pokemonBall.jpg";
+
 // Define the structure of the types
 interface PokemonType {
     id: number;
     name: string;
 }
+
 const PokemonList = () => {
-    const [pokemons, setPokemons] = useState<any[]>([]);
-    const [pokemonsData, setPokemonsData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(1);
+    // State hooks 
+    const [pokemons, setPokemons] = useState<any[]>([]); // Pokémon data to be displayed
+    const [pokemonsData, setPokemonsData] = useState<any[]>([]); // Raw data from the API
+    const [loading, setLoading] = useState(true); // Loading state for when the data is being fetched
+    const [page, setPage] = useState(1); // Pagination state
     const limit = 16; // Number of Pokémon per page
-    const [order, setOrder] = useState<"asc" | "desc">("asc"); // Default to ascending order
-    const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
-    const [allTypes, setAllTypes] = useState<PokemonType[]>([]); // Use PokemonType interface
-    const [sortBy, setSortBy] = useState<"name" | "hp" | "attack" | "defense">("name");
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedStat, setSelectedStat] = useState<"hp" | "attack" | "defense" | "special-attack" | "special-defense" | "speed">("hp");
-    const [minStat, setMinStat] = useState<number | "">("");
-    const [searchInput, setSearchInput] = useState(""); // Holds the input value
-    const [filteredPokemons, setFilteredPokemons] = useState<any[]>(pokemons);
-    const [maxStat, setMaxStat] = useState<number | "">("");
+    const [order, setOrder] = useState<"asc" | "desc">("asc"); // Sorting order (ascending/descending)
+    const [selectedTypeId, setSelectedTypeId] = useState<number | null>(0); // Filter Pokémon by type
+    const [allTypes, setAllTypes] = useState<PokemonType[]>([]); // All available Pokémon types
+    const [sortBy, setSortBy] = useState<"name" | "hp" | "attack" | "defense">("name"); // Sort criteria
+    const [searchQuery, setSearchQuery] = useState(""); // Search query for Pokémon names
+    const [selectedStat, setSelectedStat] = useState<"hp" | "attack" | "defense">("hp"); // Stat selection for sorting
+    const [minStat, setMinStat] = useState<number | "">(""); // Minimum stat value for filtering
+    const [maxStat, setMaxStat] = useState<number | "">(""); // Maximum stat value for filtering
 
-
+    // Function to get the stat value of a specific stat for a Pokémon (like HP, Attack, etc.)
     const getStat = (pokemonData: any, statName: string) => {
         const stat = pokemonData.pokemon_v2_pokemonstats.find((s: any) => s.pokemon_v2_stat.name === statName);
         return stat ? stat.base_stat : null;
     };
 
+    // Extract detailed information from the Pokémon data to be used in display
     const extractPokemonDetails = (pokemonData: any) => {
         const name = pokemonData.name;
         const height = pokemonData.height;
@@ -56,40 +58,54 @@ const PokemonList = () => {
         };
     };
 
+    // Handle search functionality when search button is clicked
     const handleSearch = async () => {
         setLoading(true);
+        setSelectedTypeId(0);
+        setSortBy("name");
 
-        // Fetch the filtered Pokémon data based on searchQuery, minStat, and maxStat
-        const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit; // Calculate the offset for pagination based on the current page and limit
+        const pokemonsData = await fetchPokemons(order, limit, offset, searchQuery, selectedStat, minStat, maxStat); // Fetch the Pokémon data based on different criteria
+        setPokemonsData(pokemonsData);
 
-        const pokemonsData = await fetchPokemons(order, limit, offset, searchQuery, selectedStat, minStat, maxStat);
-
-        // Process the data as needed
-        const detailedPokemons = pokemonsData.map((pokemon: any) => extractPokemonDetails(pokemon));
-
+        // Extracting detailed information and sorting it
+        const detailedPokemons = pokemonsData.map((pokemon: any) => extractPokemonDetails(pokemon)).sort((a: any, b: any) => {
+            return a.name.localeCompare(b.name);
+        });
         setPokemons(detailedPokemons);
+
         setLoading(false);
     };
 
+    // Fetch initial Pokémon data when the component mounts or when page/order changes
     useEffect(() => {
         const getPokemons = async () => {
             setLoading(true);
+
+            // Reset the selected type filter to "All" (0) and set the sorting to "name"
+            setSelectedTypeId(0);
+            setSortBy("name");
+
             const offset = (page - 1) * limit;
-            const pokemonsData = await fetchPokemons(order, limit, offset, searchQuery, selectedStat, minStat, maxStat);
+
+            const pokemonsData = await fetchPokemons(order, limit, offset, searchQuery, selectedStat, minStat, maxStat); // Fetch the Pokémon data based on different criteria
             setPokemonsData(pokemonsData);
 
-            const detailedPokemons = pokemonsData.map((pokemon: any) => extractPokemonDetails(pokemon));
+            // Process the data as needed
+            const detailedPokemons = pokemonsData.map((pokemon: any) => extractPokemonDetails(pokemon)).sort((a: any, b: any) => {
+                return a.name.localeCompare(b.name);
+            });
             setPokemons(detailedPokemons);
 
             setLoading(false);
         };
 
         getPokemons();
-    }, [page, order]); // Include all relevant dependencies
+    }, [page, order]); // re-runs when the 'page' or 'order' state changes
 
 
 
-    // Extract unique types from pokemonsData
+    // Extract unique Pokémon types from the fetched Pokémon data
     useEffect(() => {
         const uniqueTypes = Array.from(
             new Set(
@@ -98,11 +114,13 @@ const PokemonList = () => {
                 )
             )
         );
-        setAllTypes(uniqueTypes); // Update the available types
-    }, [pokemonsData]);
+        setAllTypes(uniqueTypes); // Update the available types to filter by
+    }, [pokemonsData]);// Runs every time the fetched Pokémon data changes
 
+    // Filter Pokémon data by selected type, if any
     useEffect(() => {
-        const filteredData = selectedTypeId
+        // First, filter based on the selected type
+        let filteredData = selectedTypeId
             ? pokemonsData.filter((pokemon) =>
                 pokemon.pokemon_v2_pokemontypes.some(
                     (type: { pokemon_v2_type: { id: number } }) => type.pokemon_v2_type.id === selectedTypeId
@@ -110,24 +128,18 @@ const PokemonList = () => {
             )
             : pokemonsData; // If no type is selected, use full list
 
-        setPokemons(filteredData.map(extractPokemonDetails)); // Apply transformation only to filtered results
-    }, [selectedTypeId, pokemonsData]); // Runs when type selection or data changes
-
-    useEffect(() => {
-        if (pokemons.length === 0) return; // Prevent sorting empty list
-
-        let sortedPokemons = [...pokemons];
-
-        sortedPokemons.sort((a, b) => {
+        // Then, sort the filtered data based on the selected sort criteria
+        filteredData = filteredData.map(extractPokemonDetails);
+        filteredData.sort((a, b) => {
             if (sortBy === "name") {
-                return a.name.localeCompare(b.name);
+                return a.name.localeCompare(b.name); // Sort by name alphabetically
             } else {
                 return b[sortBy] - a[sortBy]; // Sort by stat (higher values first)
             }
         });
 
-        setPokemons(sortedPokemons);
-    }, [sortBy]);
+        setPokemons(filteredData); // Apply transformation only to filtered and sorted results
+    }, [selectedTypeId, sortBy]); // // Runs when the selected type or/and the sort criteria changes
 
     return (
         <section className="bg-gray-900 text-gray-200 py-10 px-12 min-h-screen">
@@ -158,8 +170,6 @@ const PokemonList = () => {
                 </div>
             </div>
 
-
-
             {/* Searching Block */}
             <span className="text-lg font-semibold text-white sm:mb-0 mb-4">Find your Pokemon</span>
 
@@ -187,7 +197,7 @@ const PokemonList = () => {
                         <span className="text-sm text-white mb-1">Criteria</span>
                         <select
                             value={selectedStat}
-                            onChange={(e) => setSelectedStat(e.target.value as "hp" | "attack" | "defense" | "special-attack" | "special-defense" | "speed")}
+                            onChange={(e) => setSelectedStat(e.target.value as "hp" | "attack" | "defense")}
                             className="px-6 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                         >
                             <option value="hp">HP</option>
