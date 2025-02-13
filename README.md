@@ -25,5 +25,10 @@ The data used in this application is fetched from the **PokeAPI** via **GraphQL*
 - [Node.js](https://nodejs.org/en/) (version 14.x or higher)
 
 ### 1. Clone the repository
-   ```bash
    git clone https://github.com/your-username/pokemon-search-app.git
+### 2. Install dependencies
+Install all necessary dependencies using npm or yarn:
+npm install
+### 3. Start the development server
+Run the app in development mode:
+npm start
